@@ -75,10 +75,11 @@ class GeneticAlgorithm():
         }
         listPrefrensi = []
         tempSesi = ""
-        # print(preferensiObj)
-        for hari in preferensiObj["hari"]:
+        
+        for hari in preferensiObj['hari']:
+         
             tempSesi = tempSesi + hariDict[hari]
-            for sesi in preferensiObj["sesi"]:
+            for sesi in preferensiObj['sesi']:
                 listPrefrensi.append(tempSesi + sesiDict[sesi])
             tempSesi = ""
 
@@ -98,13 +99,13 @@ class GeneticAlgorithm():
             # random_ruangan = random.sample(data_ruangan, len(data_ruangan))
             random_ruangan = np.random.choice(a=self.data_ruangan, size=len(self.data_ruangan), replace=False)
         else:
-            random_ruangan = np.random.choice(a=self.data_ruangan, size=len(banyak_perkuliahan) + 1, replace=False)
+            random_ruangan = np.random.choice(a=self.data_ruangan, size=(banyak_perkuliahan) + 1, replace=False)
             # random_ruangan = random.sample(data_ruangan, banyak_perkuliahan)
 
         if (banyak_perkuliahan > len(self.sesi)):
             random_sesi = np.random.choice(a=self.sesi, size=len(self.sesi), replace=False)
         else:
-            random_sesi = np.random.choice(a=self.sesi, size=len(banyak_perkuliahan) + 1, replace=False)
+            random_sesi = np.random.choice(a=self.sesi, size=(banyak_perkuliahan) + 1, replace=False)
 
         # Iteration for sesi and ruangan
         j = 0  # ruangan
@@ -112,13 +113,14 @@ class GeneticAlgorithm():
 
         # Inisiasi untuk SKPB
         self.list_skpb = []
-        for data in self.data['data']:
-            individuSesi = self.preferensiToSesi(data["preferensi"])
-            if data['dosen'] not in dosenPrefensiDict:
-                dosenPrefensiDict[data['dosen']] = individuSesi
-            if data['mata_kuliah'][0:2] != "UG":
+        for data_perkuliahan in self.data['data']:
+            
+            if data_perkuliahan['kode_mk'][0:2] != "UG":
+                individuSesi = self.preferensiToSesi(data_perkuliahan['preferensi'])
+                if data_perkuliahan['kode_dosen'] not in dosenPrefensiDict:
+                    dosenPrefensiDict[data_perkuliahan['kode_dosen']] = individuSesi
                 list_perkuliahan.append(
-                    data['dosen'] + data['mata_kuliah'] + data['kelas'] + random_ruangan[j] + random_sesi[k])
+                    data_perkuliahan['kode_dosen'] + data_perkuliahan['kode_mk'] + data_perkuliahan['kelas'] + random_ruangan[j] + random_sesi[k])
                 j = j + 1
                 k = k + 1
                 if j >= len(random_ruangan):
@@ -128,7 +130,7 @@ class GeneticAlgorithm():
 
             else:  # Input data SKPB
                 self.list_skpb.append(
-                    data['dosen'] + data['mata_kuliah'] + data['kelas'] + data['ruangan'] + data['sesi'])
+                    data_perkuliahan['kode_dosen'] + data_perkuliahan['kode_mk'] + data_perkuliahan['kelas'] + data_perkuliahan['ruangan'] + data_perkuliahan['sesi'])
 
         # list_perkuliahan sudah menjadi Individu
         return list_perkuliahan
@@ -366,26 +368,26 @@ class GeneticAlgorithm():
         }
         for index in range(len(individual)):
             res = {
-                "dosen": individual[index][0:2],
-                "mata_kuliah": individual[index][2:8],
+                "kode_dosen": individual[index][0:2],
+                "kode_mk": individual[index][2:8],
                 "kelas": individual[index][8],
                 "ruangan": individual[index][9:12],
                 "sesi": individual[index][12:15],
                 "preferensi": self.data["data"][index]["preferensi"],
                 "tipe": "jurusan",
-                "rmk": self.data["data"][index]["rmk"]
+                "rumpun": self.data["data"][index]["rumpun"]
             }
             result["data"].append(res)
         for skpb in self.list_skpb:
             res = {
-                "dosen": skpb[0:2],
-                "mata_kuliah": skpb[2:8],
+                "kode_dosen": skpb[0:2],
+                "kode_mk": skpb[2:8],
                 "kelas": skpb[8],
                 "ruangan": skpb[9:12],
                 "sesi": skpb[12:15],
                 "preferensi": [],
                 "tipe": "SK",
-                "rmk": "SKPB"
+                "rumpun": "SKPB"
             }
             result["skpb"].append(res)
         result["violated_constraint"]["first_constraint"] = x
