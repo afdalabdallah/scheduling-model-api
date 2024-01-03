@@ -53,6 +53,7 @@ class GeneticAlgorithm():
         self.data = raw_data
         self.unwanted_sesi = self.data["unwanted_sesi"]
         self.data_ruangan = self.data["ruangan"]
+        self.constraintViolated = {}
         # f.close()
 
     def preferensiToSesi(self, preferensiObj):
@@ -158,7 +159,7 @@ class GeneticAlgorithm():
             self.population.append(individual)
         self.initTransferredActivity(False)
 
-    # Return number of violation [x,y,z] for an individual
+    # Return number of violation [x,y,z,p,q] for an individual
     def _individuConstrain(self, individu):
         x = 0 # First to third constraint
         y = 0
@@ -171,7 +172,7 @@ class GeneticAlgorithm():
         ruangan = len(individu)
         count_perkuliahan_table = 0
         # print(timeslot, ruangan)
-        # First constraint
+        # First constraint: dosen mengajar di waktu yang sama
         for time in range(timeslot):
             count_same_dosen = {}
             for room in range (ruangan):
@@ -183,7 +184,7 @@ class GeneticAlgorithm():
             duplicate_in_timeslot = sum(count-1 for count in count_same_dosen.values() if count > 1 )
             x = x + duplicate_in_timeslot
 
-        # Third constraint
+        # Third constraint: dosen tidak mengajar lebih dari 2x dalam sehari
         for room in range(ruangan):
             count_dosen_mengajar = {}
             for time in range(timeslot):
@@ -396,10 +397,13 @@ class GeneticAlgorithm():
     def repairFunction(self, individu,x,y,z,p,q):
         timeslot = len(individu[0])
         ruangan = len(individu)
-        while x > 0:
-            count_perkuliahan_table = 0
-            # print(timeslot, ruangan)
-            # First constraint
+        duplicate_coordinates = []
+        # while x > 0:
+        count_perkuliahan_table = 0
+        # print(timeslot, ruangan)
+        # First constraint
+        while x>0:
+            # Tracking duplicates
             for time in range(timeslot):
                 count_same_dosen = {}
                 for room in range (ruangan):
@@ -410,8 +414,28 @@ class GeneticAlgorithm():
                         count_perkuliahan_table = count_perkuliahan_table + 1
                 duplicate_in_timeslot = sum(count-1 for count in count_same_dosen.values() if count > 1 )
                 x = x + duplicate_in_timeslot
-
-        return individu
+                
+                for room, activity in enumerate(individu):
+                    if activity[time] != '':
+                        dosen = activity[time][0:2]
+                        if count_same_dosen[dosen] > 1:
+                            duplicate_coordinates.append((room, time))
+                            count_same_dosen[dosen] = 0
+            
+            #Repairing
+            for item in duplicate_coordinates:
+                first_value, second_value = item
+                random_col = 0
+                random_row = 0
+                while True:
+                    random_col = np.random.randint(0,len(individu[0]))
+                    random_row = np.random.randint(0, len(individu))
+                    if individu[random_row][random_col] == '':
+                        individu[random_row][random_col] = individu[first_value][second_value]
+                        x-=1
+                        break
+                
+        return individu,x,y,z,p,q
 
     def run(self):
         # Initialize new population
@@ -496,8 +520,11 @@ class GeneticAlgorithm():
         print ("[%d Answer: '%s']\n [Fitness: %.2f]" % (epoch, fittest_individual, highest_fitness))
         # print("SKPB ", self.list_skpb)
         x,y,z,p,q = self._individuConstrain(fittest_individual)
+        print("Before repaired: " ,x,y,z,p,q)
+        repaired_individu,x,y,z,p,q = self.repairFunction(fittest_individual,x,y,z,p,q)
+      
         # print(x,y,z,p,q)
-        return self.parseJsn(fittest_individual,x,y,z,p,q,highest_fitness)
+        return self.parseJsn(repaired_individu,x,y,z,p,q,highest_fitness)
 
     def parseJsn(self, individual,x,y,z,p,q,highest_fitness):
         result = {
