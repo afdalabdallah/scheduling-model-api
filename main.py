@@ -2,7 +2,7 @@ import os
 
 from flask import Flask, request, jsonify
 import GA
-
+import requests
 app = Flask(__name__)
 
 app.config['TIMEOUT'] = 30
@@ -15,7 +15,15 @@ def index():
 def generate_schedule():
     test = request.json
     object = GA.GeneticAlgorithm(10,test)
-    return object.run()
+    result = object.run()
+    response = requests.post('http://localhost:5000/jadwal', json=result)
+    response_data = {}
+    if response:
+        response_data = {"status": "success"}
+    else:
+        response_data = {"status": "Not success at generating"}
+
+    return jsonify(response_data)
 
 
 if __name__ == "__main__":

@@ -531,6 +531,7 @@ class GeneticAlgorithm():
             "data": [],
             "skpb": [],
             "violated_constraint":{},
+            "list_ruangan": [],
         }
       
         for time in range(len(individual[0])):
@@ -543,7 +544,7 @@ class GeneticAlgorithm():
                     res = {
                         "dosen":dosen,
                         "mata_kuliah": individual[room][time][2:8],
-                        "kelas": individual[room][time],
+                        "kelas": individual[room][time][8],
                         "ruangan": ruangan, #a
                         "sesi":sesi, #a
                         "time": time,
@@ -570,6 +571,8 @@ class GeneticAlgorithm():
         result["violated_constraint"]["fourth_constraint"] = p
         result["violated_constraint"]["fifth_constraint"] = q
         result["fitness"] = highest_fitness
+        result['list_ruangan'] = self.data_ruangan
+        result['unwanted_sesi'] = self.unwanted_sesi
         return result
 
 
