@@ -103,6 +103,7 @@ class GeneticAlgorithm():
                 dosenPrefensiDict[data['dosen']] = individuSesi
 
             if data['mata_kuliah'][0:2] != "UG":
+                random_cols=0
                 class_activity = data['dosen']+data['mata_kuliah']+data['kelas']
                 random_rows = np.random.choice(np.arange(len(self.data_ruangan)), size=1, replace=False)
                 while(True):
@@ -522,8 +523,8 @@ class GeneticAlgorithm():
         x,y,z,p,q = self._individuConstrain(fittest_individual)
         print("Before repaired: " ,x,y,z,p,q)
         repaired_individu,x,y,z,p,q = self.repairFunction(fittest_individual,x,y,z,p,q)
-      
-        # print(x,y,z,p,q)
+        print("After repaired")
+        print(x,y,z,p,q)
         return self.parseJsn(repaired_individu,x,y,z,p,q,highest_fitness)
 
     def parseJsn(self, individual,x,y,z,p,q,highest_fitness):
