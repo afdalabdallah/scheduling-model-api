@@ -490,7 +490,7 @@ class GeneticAlgorithm():
             new_population = []
             for i in np.arange(0, self.population_size):
         # #         # Select two parents randomly according to probabilities
-                
+                print("Sum of parent_probabilities ", sum(parent_probabilities))
                 parent1_f, parent2_f = random.choices(population_fitness, k=2, weights=parent_probabilities)
                 parent1_index = population_fitness.index(parent1_f)
                 parent1 = self.population[parent1_index]
