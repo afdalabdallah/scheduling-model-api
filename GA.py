@@ -79,12 +79,13 @@ class GeneticAlgorithm():
         listPrefrensi = []
         tempSesi = ""
         
-        for hari in preferensiObj['hari']:
-         
-            tempSesi = tempSesi + hariDict[hari]
-            for sesi in preferensiObj['sesi']:
-                listPrefrensi.append(tempSesi + sesiDict[sesi])
-            tempSesi = ""
+        if preferensiObj:
+            for hari in preferensiObj['hari']:
+            
+                tempSesi = tempSesi + hariDict[hari]
+                for sesi in preferensiObj['sesi']:
+                    listPrefrensi.append(tempSesi + sesiDict[sesi])
+                tempSesi = ""
 
         return listPrefrensi
 
@@ -98,12 +99,16 @@ class GeneticAlgorithm():
         self.timetable_skpb=['' for i in range(cols)]
         self.list_skpb = []
         for data in self.data['data']:
-            individuSesi = self.preferensiToSesi(data["preferensi"])
-            if data['dosen'] not in dosenPrefensiDict:
-                dosenPrefensiDict[data['dosen']] = individuSesi
+            # print(data["preferensi"])
+            if data['mata_kuliah'][0:2] != "SM" and data["mata_kuliah"][0:2] != "UG":
+                # print(data['mata_kuliah'][0:2])
+                individuSesi = self.preferensiToSesi(data["preferensi"])
+                if data['dosen'] not in dosenPrefensiDict:
+                    dosenPrefensiDict[data['dosen']] = individuSesi
 
-            if data['mata_kuliah'][0:2] != "UG":
+            if data['mata_kuliah'][0:2] != "SM" and data["mata_kuliah"][0:2] != "UG":
                 random_cols=0
+                # print(data['mata_kuliah'][0:2]," Didalem if")
                 class_activity = data['dosen']+data['mata_kuliah']+data['kelas']
                 random_rows = np.random.choice(np.arange(len(self.data_ruangan)), size=1, replace=False)
                 while(True):
@@ -167,6 +172,7 @@ class GeneticAlgorithm():
         z = 0
         p = 0 # fourth constraint
         q = 0 # prefrensi
+        r = 0
         # print("INI DI INDIVIDU CONSTRAINT")
         # print(individu)
         timeslot = len(individu[0])
@@ -194,31 +200,40 @@ class GeneticAlgorithm():
                 # Per 10 sesi di 1 hari
                 if(time % 10 == 0 and time != 0):
                     double_dosen_mengajar = sum(count-1 for count in count_dosen_mengajar.values() if count > 2 )
-                    y = y + double_dosen_mengajar
+                    z = z + double_dosen_mengajar
                     count_dosen_mengajar = {}
                 if(activity != ''):
                     count_dosen_mengajar[dosen] = count_dosen_mengajar.get(dosen,0) + 1
                     index_to_sesi = 101 + time // 10 * 100 + time % 10
-                    # Fifth Constrain (Prefrensi)
+                    # Fourth Constrain (Prefrensi)
                     if str(index_to_sesi) not in dosenPrefensiDict[dosen]:
-                        q = q + 1
-                    # Fourth Constraint (SKPB)
-                    for s in range(len(self.list_skpb)):
-                        if abs(index_to_sesi - int(self.list_skpb[s][12:15])) < 2:
-                            p = p+1
+                        p = p + 1
+                    
+                    if activity[5] == "1":
+                        for s in range(len(self.list_skpb)):
+                            # Fifth Constraint(same sesi with SKPB)
+                            if str(index_to_sesi) == self.list_skpb[s][12:15]:
+                                q = q + 1
+                            # Sixth Constraint (sesi SKPB < 2 jam)
+                            if abs(index_to_sesi - int(self.list_skpb[s][12:15])) < 2:
+                                r = r+1
         
-        return [x,y,z,p,q]
+        return [x,y,z,p,q,r]
 
     def individuFitness(self, individual):
-        w1 = 45
-        w2 = 45
-        w3 = 9
-        w4 = 1
-        x,y,z,p,q = self._individuConstrain(individual)
+        w1 = 44
+        w2 = 44
+        w3 = 0
+        w4 = 2
+        w5 = 5
+        w6 = 5
+        x,y,z,p,q,r = self._individuConstrain(individual)
         f1 = 0
-        f2= 0
-        f3=0
-        f4 =0
+        f2 = 0
+        f3 = 0
+        f4 = 0
+        f5 = 0
+        f6 = 0
         if(x == 0):
             f1 = w1
         else:
@@ -229,37 +244,51 @@ class GeneticAlgorithm():
         else:
             f2 = w2/(y + 1e-8)
 
-        if(p == 0):
+        if(z == 0):
             f3 = w3
         else:
-            f3 = w3/(p + 1e-8)
+            f3 = w3/(z + 1e-8)
         
-        if(q == 0):
+        if(p == 0):
             f4 = w4
         else:
-            f4 = w4/(q + 1e-8)
+            f4 = w4/(p + 1e-8)
+        
+        if(q == 0):
+            f5 = w5
+        else:
+            f5 = w5/(q + 1e-8)
+
+        if(r == 0):
+            f6 = w6
+        else:
+            f6 = w6/(r + 1e-8)
 
 
-        fitness = f1 + f2 +f3 + f4
-        return [fitness, x,y,z,p,q]
+        fitness = f1 + f2 +f3 + f4 +f5 + f6
+        return [fitness, x,y,z,p,q,r]
 
     def _calculate_fitness(self):
         """ Calculates the fitness of each individual in the population """
         population_fitness = []
-        w1 = 45
-        w2 = 45
-        w3 = 9
-        w4 = 1
+        w1 = 44
+        w2 = 44
+        w3 = 0
+        w4 = 2
+        w5 = 5
+        w6 = 5
         
         for individual in self.population:
             # loss: Array[x,y,z,p,q]
-            x,y,z,p,q = self._individuConstrain(individual)
+            x,y,z,p,q,r = self._individuConstrain(individual)
             # print(x,y,z,p,q)
             # print(x)
             f1 = 0
-            f2= 0
-            f3=0
-            f4 =0
+            f2 = 0
+            f3 = 0
+            f4 = 0
+            f5 = 0
+            f6 = 0
             if(x == 0):
                 f1 = w1
             else:
@@ -270,18 +299,28 @@ class GeneticAlgorithm():
             else:
                 f2 = w2/(y + 1e-8)
 
-            if(p == 0):
+            if(z == 0):
                 f3 = w3
             else:
-                f3 = w3/(p + 1e-8)
+                f3 = w3/(z + 1e-8)
             
-            if(q == 0):
+            if(p == 0):
                 f4 = w4
             else:
-                f4 = w4/(q + 1e-8)
+                f4 = w4/(p + 1e-8)
+            
+            if(q == 0):
+                f5 = w5
+            else:
+                f5 = w5/(q + 1e-8)
+
+            if(r == 0):
+                f6 = w6
+            else:
+                f6 = w6/(r + 1e-8)
 
 
-            fitness = f1 + f2 +f3 + f4
+            fitness = f1 + f2 + f3 + f4 + f5 + f6
             
             # fitness = round(fitness)
             population_fitness.append(fitness)
@@ -293,6 +332,8 @@ class GeneticAlgorithm():
         self.mutation_rate """
         n = np.random.randint(1,len(individual))
         random_row = []
+        random_time_slot1 = 0
+        random_time_slot2 = 0
         while n > 0:
             row = np.random.randint(0,len(individual))
             if row in random_row:
@@ -483,7 +524,7 @@ class GeneticAlgorithm():
                     probability =  ((avg_fitness-fitness)/(avg_fitness-lowest_fitness+1e-8))
                 
                 probability = probability / sum(population_fitness)
-                # probability = probability * 100
+                # probability = probability * 100t
                 parent_probabilities.append(probability)
             # print(sum(parent_probabilities))
             # print(parent_probabilities)
@@ -491,7 +532,7 @@ class GeneticAlgorithm():
             new_population = []
             for i in np.arange(0, self.population_size):
         # #         # Select two parents randomly according to probabilities
-                print("Sum of parent_probabilities ", sum(parent_probabilities))
+                # print("Sum of parent_probabilities ", sum(parent_probabilities))
                 parent1_f, parent2_f = random.choices(population_fitness, k=2, weights=parent_probabilities)
                 parent1_index = population_fitness.index(parent1_f)
                 parent1 = self.population[parent1_index]
@@ -520,14 +561,14 @@ class GeneticAlgorithm():
             highest_fitness = maximum_fitness
         print ("[%d Answer: '%s']\n [Fitness: %.2f]" % (epoch, fittest_individual, highest_fitness))
         # print("SKPB ", self.list_skpb)
-        x,y,z,p,q = self._individuConstrain(fittest_individual)
-        print("Before repaired: " ,x,y,z,p,q)
+        x,y,z,p,q,r = self._individuConstrain(fittest_individual)
+        print("Before repaired: " ,x,y,z,p,q,r)
         repaired_individu,x,y,z,p,q = self.repairFunction(fittest_individual,x,y,z,p,q)
         print("After repaired")
-        print(x,y,z,p,q)
-        return self.parseJsn(repaired_individu,x,y,z,p,q,highest_fitness)
+        print(x,y,z,p,q,r)
+        return self.parseJsn(repaired_individu,x,y,z,p,q,r,highest_fitness)
 
-    def parseJsn(self, individual,x,y,z,p,q,highest_fitness):
+    def parseJsn(self, individual,x,y,z,p,q,r,highest_fitness):
         result = {
             "data": [],
             "skpb": [],
@@ -571,6 +612,7 @@ class GeneticAlgorithm():
         result["violated_constraint"]["third_constraint"] = z
         result["violated_constraint"]["fourth_constraint"] = p
         result["violated_constraint"]["fifth_constraint"] = q
+        result["violated_constraint"]["sixth_constraint"] = r
         result["fitness"] = highest_fitness
         result['list_ruangan'] = self.data_ruangan
         result['unwanted_sesi'] = self.unwanted_sesi
