@@ -17,7 +17,7 @@ default_sesi = []
 # key = kode dosen, value: list sesi prefrensi
 dosenPrefensiDict = {}
 for i in range(1, 6):
-    for j in range(1, 10, 2):
+    for j in range(1, 11, 2):
         temp_sesi = ""
         if j < 10:
             default_sesi.append(str(i) + "0" + str(j))
@@ -89,9 +89,20 @@ class GeneticAlgorithm():
 
         return listPrefrensi
 
+    def isMatkulEmpty(self, individu, num_rows, row, col):
+        row = int(row)
+        col = int(col)
+        is_row_minus_1_empty = 0 <= row - 1 < num_rows and individu[row - 1][col] == ""
+
+    # Check if row+1 is within bounds and arr[row+1][col] is an empty string
+        is_row_plus_1_empty = 0 <= row + 1 < num_rows and individu[row + 1][col] == ""
+
+        # Return True if both adjacent rows are empty, otherwise False
+        return is_row_minus_1_empty and is_row_plus_1_empty
+
     def _initIndividu(self):
-        print(len(self.sesi))
-        cols = len(all_sesi) 
+        # print(len(self.sesi))
+        cols = len(all_sesi)
         rows = len(self.data_ruangan)
         timetable = [['' for j in range(cols)] for i in range(rows)]
       
@@ -111,14 +122,20 @@ class GeneticAlgorithm():
                 # print(data['mata_kuliah'][0:2]," Didalem if")
                 class_activity = data['dosen']+data['mata_kuliah']+data['kelas']
                 random_rows = np.random.choice(np.arange(len(self.data_ruangan)), size=1, replace=False)
+
                 while(True):
-                    random_cols = np.random.choice(np.arange(len(all_sesi)), size=1, replace=False)
-                    if (all_sesi[int(random_cols)] not in self.unwanted_sesi) and (timetable[int(random_rows)][int(random_cols)] == ''):
-                        break
-              
+                    random_cols = int(np.random.choice(np.arange(len(all_sesi)-2), size=1, replace=False))
+                    # print(random_cols)
+                    # col_index = all_sesi.index(default_sesi[random_cols])
+                    # print(col_index, " Col Index")
+                    # print(random_cols)
+                    if (all_sesi[int(random_cols)] not in self.unwanted_sesi) and (timetable[int(random_rows)][int(random_cols)] == '') and (timetable[int(random_rows)][int(random_cols)+1] == ''):
+                        if all_sesi[int(random_cols)][0] == all_sesi[int(random_cols)+1][0]:
+                            break
                 
                 class_activity = data['dosen']+data['mata_kuliah']+data['kelas']
                 timetable[int(random_rows)][int(random_cols)] = class_activity 
+                timetable[int(random_rows)][int(random_cols)+1] = class_activity 
                 
             else: # Input data SKPB
                 first_digit = int(data['sesi'][0]) - 1
@@ -141,6 +158,7 @@ class GeneticAlgorithm():
             individu = self.population[0]
             timeslot = len(individu[0])
             ruangan = len(individu)
+            print(timeslot, " ", ruangan)
             for room in range(ruangan):
                 for time in range(timeslot):
                     activity = individu[room][time]
@@ -189,6 +207,7 @@ class GeneticAlgorithm():
                     count_same_dosen[dosen] =  count_same_dosen.get(dosen, 0) + 1
                     count_perkuliahan_table = count_perkuliahan_table + 1
             duplicate_in_timeslot = sum(count-1 for count in count_same_dosen.values() if count > 1 )
+            duplicate_in_timeslot = int(duplicate_in_timeslot/2)
             x = x + duplicate_in_timeslot
 
         # Third constraint: dosen tidak mengajar lebih dari 2x dalam sehari
@@ -200,6 +219,7 @@ class GeneticAlgorithm():
                 # Per 10 sesi di 1 hari
                 if(time % 10 == 0 and time != 0):
                     double_dosen_mengajar = sum(count-1 for count in count_dosen_mengajar.values() if count > 2 )
+                    double_dosen_mengajar = int(duplicate_in_timeslot/2)
                     z = z + double_dosen_mengajar
                     count_dosen_mengajar = {}
                 if(activity != ''):
@@ -358,6 +378,8 @@ class GeneticAlgorithm():
     def transferProcess(self, parent1,parent2):
         timeslot = len(parent1[0])
         ruangan = len(parent1)
+        # print(timeslot)
+        # print(ruangan)
         all_ruangan = []
         array_of_timeslot = []
         for i in range(len(all_sesi)):
@@ -372,9 +394,8 @@ class GeneticAlgorithm():
         
 
         all_indices = np.array(array_of_timeslot)
-       
-        random_t1_slot = np.random.choice(all_indices, size=n_parent1, replace=False)
-        random_t2_slot = np.random.choice(all_indices, size=n_parent2, replace=False)
+        random_t1_slot = np.random.choice(np.arange(timeslot-2), size=n_parent1, replace=False)
+        random_t2_slot = np.random.choice(np.arange(timeslot-2), size=n_parent2, replace=False)
         random_t2_slot = np.setdiff1d(all_indices, random_t1_slot)[:n_parent2]
 
         child1 = [['' for j in range(timeslot)] for i in range(ruangan)]
@@ -386,16 +407,23 @@ class GeneticAlgorithm():
                
                 if activity != '':
                     child1[room][time] = activity
+                    child1[room][time+1] = activity
                     self.transferred[activity] = True
+                    # print(self.transferred[activity])
 
         for time in random_t2_slot:
             if all_sesi[time] in self.unwanted_sesi:
                 continue
             for room in range(ruangan):
-                activity = parent2[room][time]  
-                if activity != '' and self.transferred[activity] == False:
-                    child1[room][time] = activity
-                    self.transferred[activity] = True
+                activity = parent2[room][time]
+                if activity != '':
+                    # print(self.trans7ferred)
+                    if self.transferred[activity] == False:
+                        # print(self.transferred[activity])
+                        # print(time, " Time")
+                        child1[room][time] = activity
+                        child1[room][time+1] = activity
+                        self.transferred[activity] = True
         
 
         # APPLY HA FOR COURSE THAT HAS NOT BEEN TRANSFERRED
@@ -406,12 +434,21 @@ class GeneticAlgorithm():
         
         for key in self.transferred:
             if self.transferred[key] == False:
-                while True:
-                    random_HA_time = np.random.choice(all_indices,size=1, replace=False)
-                    random_HA_room = np.random.choice(np.array(all_ruangan), size=1, replace=False)
-                    if child1[random_HA_room[0]][random_HA_time[0]] == '' and all_sesi[int(random_HA_time)] not in self.unwanted_sesi:
-                        self.transferred[key] = True
-                        child1[random_HA_room[0]][random_HA_time[0]] = key
+                for i in range(timeslot-1):
+                    breakAll = False
+                    for j in range(ruangan):
+                        random_HA_time = i
+                        random_HA_room = j
+                        # random_HA_time = np.random.choice(np.arange(len(all_sesi)-2), size=1, replace=False)
+                        # random_HA_room = np.random.choice(np.array(all_ruangan), size=1, replace=False)
+                        if child1[random_HA_room][random_HA_time] == '' and all_sesi[int(random_HA_time)] not in self.unwanted_sesi and child1[random_HA_room][random_HA_time+1] == '':
+                            if all_sesi[random_HA_time][0] == all_sesi[random_HA_time+1][0]:
+                                self.transferred[key] = True
+                                child1[random_HA_room][random_HA_time] = key
+                                child1[random_HA_room][random_HA_time+1] = key
+                                breakAll = True
+                                break
+                    if breakAll:
                         break
         
         self.initTransferredActivity(True)
@@ -419,9 +456,10 @@ class GeneticAlgorithm():
 
     def _crossover(self, parent1, parent2):
         """ Create children from parents by crossover """
-        child1 = self.transferProcess(parent1, parent2)
-        child2 = self.transferProcess(parent2, parent1)
-        return child1,child2
+        # child1 = self.transferProcess(parent1, parent2)
+        # child2 = self.transferProcess(parent2, parent1)
+        # return child1,child2
+        return parent1, parent2
                 
 
     
@@ -489,6 +527,7 @@ class GeneticAlgorithm():
         maximum_fitness = 0
         most_fit = [[]]
         iterations = 300
+        highest_fitness_epoch = 0
         for epoch in range(iterations):
             population_fitness = self._calculate_fitness()
             print(population_fitness)
@@ -506,6 +545,7 @@ class GeneticAlgorithm():
             if highest_fitness >= maximum_fitness:
                 maximum_fitness = highest_fitness
                 most_fit = fittest_individual
+                highest_fitness_epoch = epoch
         #     if epoch == iterations:
         #         break
 
@@ -548,8 +588,8 @@ class GeneticAlgorithm():
                 # print("Ini child hasil mutate")
                 # print(self._mutate(child1,highest_fitness,avg_fitness))
                 # print(self._mutate(child2,highest_fitness,avg_fitness))
-                # new_population += [child1, child2]
-                new_population += [self._mutate(child1,highest_fitness,avg_fitness), self._mutate(child2,highest_fitness,avg_fitness)]
+                new_population += [child1, child2]
+                # new_population += [self._mutate(child1,highest_fitness,avg_fitness), self._mutate(child2,highest_fitness,avg_fitness)]
 
             print ("[%d Epoch, Fitness: %.2f]" % (epoch,highest_fitness))
            
@@ -559,7 +599,7 @@ class GeneticAlgorithm():
         if highest_fitness <= maximum_fitness:
             fittest_individual = most_fit
             highest_fitness = maximum_fitness
-        print ("[%d Answer: '%s']\n [Fitness: %.2f]" % (epoch, fittest_individual, highest_fitness))
+        print ("[Epoch %d Answer: '%s']\n [Fitness: %.2f]" % (highest_fitness_epoch, fittest_individual, highest_fitness))
         # print("SKPB ", self.list_skpb)
         x,y,z,p,q,r = self._individuConstrain(fittest_individual)
         print("Before repaired: " ,x,y,z,p,q,r)
