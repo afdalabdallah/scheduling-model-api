@@ -8,7 +8,6 @@ import random
 # Ex. 110 = Monday, Session 10
 # A session means an hour, Session 1 starts from 7.00
 # That means Sesssion 2 is 8.00, Session 3 is 9.00, and so on.
-default_sesi = []
 
 # Hanya perlu inisiasi satu kali di awal karena prefrensi dosen tidak akan beruabh
 # selama algoritma berjalan, jadi hanya menggunakan 1 variabel saja untuk pengecekan 
@@ -16,13 +15,7 @@ default_sesi = []
 # Struktur {"DA" : ["101,"102"]}
 # key = kode dosen, value: list sesi prefrensi
 dosenPrefensiDict = {}
-for i in range(1, 6):
-    for j in range(1, 10, 2):
-        temp_sesi = ""
-        if j < 10:
-            default_sesi.append(str(i) + "0" + str(j))
-        else:
-            default_sesi.append(str(i) + str(j))
+
 all_sesi = []
 for i in range(1, 6):
     for j in range(1, 11):
@@ -151,8 +144,6 @@ class GeneticAlgorithm():
 
     def removeUnwantedSesi(self):
         for unwanted in self.unwanted_sesi:
-            if unwanted in default_sesi:
-                default_sesi.remove(unwanted)
             if unwanted in all_sesi:
                 all_sesi.remove(unwanted)
         return all_sesi
@@ -272,12 +263,12 @@ class GeneticAlgorithm():
     def _calculate_fitness(self):
         """ Calculates the fitness of each individual in the population """
         population_fitness = []
-        w1 = 44
-        w2 = 44
-        w3 = 0
-        w4 = 2
-        w5 = 5
-        w6 = 5
+        w1 = 25
+        w2 = 25
+        w3 = 15
+        w4 = 1
+        w5 = 17
+        w6 = 17
         
         for individual in self.population:
             # loss: Array[x,y,z,p,q]
@@ -488,12 +479,7 @@ class GeneticAlgorithm():
         return individual
 
     def run(self):
-        # Initialize new population
-        # Initialize new population
         self._initialize()
-        # print("population\n",self.population)
-        # p1 = 0.5
-        # p2 = 0.5
         maximum_fitness = 0
         most_fit = [[]]
         iterations = 300
@@ -501,29 +487,21 @@ class GeneticAlgorithm():
             population_fitness = self._calculate_fitness()
             print(population_fitness)
             
-        #     # print(x,y,z,p)
-        #     # This is the indivdual
             fittest_individual = self.population[np.argmax(population_fitness)]
 
-        #     # While this is the number
             highest_fitness = max(population_fitness)
             lowest_fitness = min(population_fitness)
             avg_fitness = (sum(population_fitness) / len(population_fitness))
-            # print(avg_fitness)
-        # #     # If we have found individual which matches the target => Done
+
             if highest_fitness >= maximum_fitness:
                 maximum_fitness = highest_fitness
                 most_fit = fittest_individual
             if self.terminate(population_fitness):
                 break
 
-        # #     # Set the probability that the individual should be selected as a parent
-        # #     # proportionate to the individual's fitness.
+            # Set the probability that the individual should be selected as a parent
+            # proportionate to the individual's fitness.
             parent_probabilities = []
-            # print("Fitness\n", population_fitness)
-            # print("Highest:\n", highest_fitness)
-            # print("Average:\n", avg_fitness)
-            # print("Lowest:\n", lowest_fitness)
             for fitness in population_fitness:
                 probability = 0
                 if fitness >= avg_fitness:
@@ -532,45 +510,32 @@ class GeneticAlgorithm():
                     probability =  ((avg_fitness-fitness)/(avg_fitness-lowest_fitness+1e-8))
                 
                 probability = probability / sum(population_fitness)
-                # probability = probability * 100t
                 parent_probabilities.append(probability)
-            # print(sum(parent_probabilities))
-            # print(parent_probabilities)
-        # #     # Determine the next generation
+            # Determine the next generation
             new_population = []
             for i in np.arange(0, self.population_size):
-        # #         # Select two parents randomly according to probabilities
-                # print("Sum of parent_probabilities ", sum(parent_probabilities))
+                # Select two parents randomly according to probabilities
                 parent1_f, parent2_f = random.choices(population_fitness, k=2, weights=parent_probabilities)
                 parent1_index = population_fitness.index(parent1_f)
                 parent1 = self.population[parent1_index]
-        #         # print(parent1)
                 
 
                 parent2_index = population_fitness.index(parent2_f)
                 parent2 = self.population[parent2_index]
 
-        # #         # Perform crossover to produce offspring
+                # Perform crossover to produce offspring
                 child1, child2 = self._crossover(parent1, parent2)
-        # #         # Save mutated offspring for next generation
-                # print("Ini child hasil mutate")
-                # print(self._mutate(child1,highest_fitness,avg_fitness))
-                # print(self._mutate(child2,highest_fitness,avg_fitness))
-                # new_population += [child1, child2]
+                # Save mutated offspring for next generation
                 new_population += [self._mutate(child1,highest_fitness,avg_fitness), self._mutate(child2,highest_fitness,avg_fitness)]
 
             print ("[%d Epoch, Fitness: %.2f]" % (epoch,highest_fitness))
            
             self.population = new_population
-            # print(self.population)
 
         if highest_fitness <= maximum_fitness:
             fittest_individual = most_fit
             highest_fitness = maximum_fitness
         print ("[%d Answer: '%s']\n [Fitness: %.2f]" % (epoch, fittest_individual, highest_fitness))
-        # print("SKPB ", self.list_skpb)
-        # fittest_individual = self.population[0]
-        # highest_fitness = 90
         x,y,z,p,q,r = self._individuConstrain(fittest_individual)
         print("Before repaired: " ,x,y,z,p,q,r)
         repaired_individu,x,y,z,p,q = self.repairFunction(fittest_individual,x,y,z,p,q)
